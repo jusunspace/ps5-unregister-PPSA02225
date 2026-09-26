@@ -1,0 +1,43 @@
+name: Build PS5 ELF
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'main.c'
+      - 'Makefile'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          repository: ps5-payload-dev/sdk
+          path: sdk
+
+      - name: Setup SDK
+        working-directory: sdk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 lld-18
+          make DESTDIR=${{ runner.tool_cache }}/ps5-payload-sdk clean install
+          echo PS5_PAYLOAD_SDK=${{ runner.tool_cache }}/ps5-payload-sdk >> $GITHUB_ENV
+
+      - name: Checkout payload
+        uses: actions/checkout@v4
+        with:
+          path: payload
+
+      - name: Build
+        working-directory: payload
+        run: make clean all
+
+      - name: Upload ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: unregister-PPSA02225
+          path: payload/unregister-PPSA02225.elf
+          if-no-files-found: error
